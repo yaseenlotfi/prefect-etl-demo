@@ -1,3 +1,6 @@
+# Ignore misc files
+.misc
+
 # Put env vars and other local setup in here and use direnv to manage
 .envrc
 
