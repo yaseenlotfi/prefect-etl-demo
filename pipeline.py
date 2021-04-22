@@ -3,10 +3,13 @@
 import os
 import requests
 import json
+import pandas as pd
 
 from typing import List
 from io import BytesIO
 from zipfile import ZipFile
+from sqlalchemy import create_engine
+from sqlalchemy.engine import Engine
 from prefect import Flow, task, context
 from prefect.executors import LocalExecutor
 
@@ -16,6 +19,7 @@ PORT = os.getenv('_PGSQL_PORT', '5432')
 USERNAME = os.getenv('_PGSQL_USER')
 PASSWORD = os.getenv('_PGSQL_PASS')
 DBNAME = os.getenv('_PGSQL_DATABASE')
+CONNECTION_URI = f'postgresql+psycopg2://{USERNAME}:{PASSWORD}@{HOSTNAME}:{PORT}/{DBNAME}'  # noqa 501
 
 user_insert_template = """
 insert into users (user_id, email, phone, customer_locale)
@@ -50,21 +54,36 @@ def download_source(url: str) -> List[dict]:
 
 
 @task
-def process_data(raw_orders: List[dict]):
-    """Extract entities out of raw JSON dump.
-    """
+def load_users(engine: Engine, orders: List[dict]) -> None:
     users = list()
-    for order in raw_orders:
-        users = [extract_user_values(row) for row in rows]
-    return users
+    for order in orders:
+        user_id = order.get('user_id')
+        assert user_id, 'USER ID IS NULL!'
+
+        user = {
+            'id': user_id,
+            'email': order.get('email'),
+            'phone': order.get('phone'),
+            'customer_locale': order.get('customer_locale'),
+        }
+        users.append(user)
+
+    user_df = pd.DataFrame(users)
+    user_df.drop_duplicates(inplace=True)
+    user_df.to_sql('users',
+                   con=engine,
+                   index=False,
+                   if_exists='replace')
 
 
 def build_pipeline() -> Flow:
     """Build Prefect Flow and return runnable pipeline.
     """
+    engine = create_engine(CONNECTION_URI)
+
     with Flow('OrderPipeline') as flow:
         raw_data = download_source(SOURCE_URL)
-        process_data(raw_data)
+        load_users(engine, raw_data)
 
     return flow
 
