@@ -38,21 +38,25 @@ def download_source(url: str) -> List[dict]:
     file_dump = ZipFile(data_bytes)
 
     # Unpack contents into all orders
-    orders = list()
+    all_orders = list()
     for filename in file_dump.namelist():
-        for batch in json.loads(file_dump.read(filename)):
-            batch_orders = batch.get(orders, [])
-            if len(orders) == 0:
-                continue
-            orders.append(batch_orders)
-    return orders
+        batch = json.loads(file_dump.read(filename))
+        orders = batch.get('orders', [])
+        if len(orders) == 0:
+            continue
+        for order in orders:
+            all_orders.append(order)
+    return all_orders
 
 
 @task
 def process_data(raw_orders: List[dict]):
     """Extract entities out of raw JSON dump.
     """
-    pass
+    users = list()
+    for order in raw_orders:
+        users = [extract_user_values(row) for row in rows]
+    return users
 
 
 def build_pipeline() -> Flow:
