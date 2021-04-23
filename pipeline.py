@@ -144,6 +144,37 @@ def load_orders(engine: Engine, orders: List[dict]) -> None:
     task_logger.info('Loaded {nrows} orders.'.format(nrows=orders_df.shape[0]))
 
 
+@task
+def load_line_items(engine: Engine, orders: List[dict]) -> None:
+    task_logger = context['logger']
+    all_line_items = list()
+    for order in orders:
+        order_line_items = order.get('line_items', [])
+        if len(order_line_items) == 0:
+            continue
+        order_id = order.get('id')
+        for item in order_line_items:
+            line_item_id = item.get('id')
+            assert line_item_id, 'LINE ITEM ID IS NULL!'
+
+            line_item = {
+                'id': line_item_id,
+                'order_id': order_id,
+                'variant_id': item.get('variant_id'),
+                'product_id': item.get('product_id'),
+                'quantity': item.get('quantity'),
+            }
+            all_line_items.append(line_item)
+
+    items_df = pd.DataFrame(all_line_items)
+    items_df.drop_duplicates(inplace=True)
+    items_df.to_sql('order_line_items',
+                    con=engine,
+                    index=False,
+                    if_exists='replace')
+    task_logger.info('Loaded {nrows} line items.'.format(nrows=items_df.shape[0]))
+
+
 def build_pipeline() -> Flow:
     """Build Prefect Flow and return runnable pipeline.
     """
@@ -154,6 +185,7 @@ def build_pipeline() -> Flow:
         raw_data = download_source(SOURCE_URL)
         load_users(engine, raw_data)
         load_orders(engine, raw_data)
+        load_line_items(engine, raw_data)
 
     return flow
 
