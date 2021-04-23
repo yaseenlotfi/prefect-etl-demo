@@ -21,6 +21,8 @@ PORT = os.getenv('_PGSQL_PORT', '5432')
 USERNAME = os.getenv('_PGSQL_USER')
 PASSWORD = os.getenv('_PGSQL_PASS')
 DBNAME = os.getenv('_PGSQL_DATABASE')
+
+assert USERNAME and PASSWORD and DBNAME, 'MISSING CONNECTION CONFIGS!'
 CONNECTION_URI = f'postgresql+psycopg2://{USERNAME}:{PASSWORD}@{HOSTNAME}:{PORT}/{DBNAME}'  # noqa 501
 
 
@@ -52,6 +54,7 @@ def download_source(url: str) -> List[dict]:
 
 @task
 def load_users(engine: Engine, orders: List[dict]) -> None:
+    task_logger = context['logger']
     users = list()
     for order in orders:
         user_id = order.get('user_id')
@@ -71,10 +74,12 @@ def load_users(engine: Engine, orders: List[dict]) -> None:
                    con=engine,
                    index=False,
                    if_exists='replace')
+    task_logger.info('Loaded {nrows} users.'.format(nrows=user_df.shape[0]))
 
 
 @task
 def load_orders(engine: Engine, orders: List[dict]) -> None:
+    task_logger = context['logger']
     order_details = list()
     for order in orders:
         order_id = order.get('id')
@@ -136,6 +141,7 @@ def load_orders(engine: Engine, orders: List[dict]) -> None:
                      con=engine,
                      index=False,
                      if_exists='replace')
+    task_logger.info('Loaded {nrows} orders.'.format(nrows=orders_df.shape[0]))
 
 
 def build_pipeline() -> Flow:
