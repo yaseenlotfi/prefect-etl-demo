@@ -54,6 +54,8 @@ def download_source(url: str) -> List[dict]:
 
 @task
 def load_users(engine: Engine, orders: List[dict]) -> None:
+    """Parse and load users from raw orders data.
+    """
     task_logger = context['logger']
     users = list()
     for order in orders:
@@ -79,6 +81,8 @@ def load_users(engine: Engine, orders: List[dict]) -> None:
 
 @task
 def load_orders(engine: Engine, orders: List[dict]) -> None:
+    """Parse and load orders from raw orders data.
+    """
     task_logger = context['logger']
     order_details = list()
     for order in orders:
@@ -146,6 +150,8 @@ def load_orders(engine: Engine, orders: List[dict]) -> None:
 
 @task
 def load_line_items(engine: Engine, orders: List[dict]) -> None:
+    """Parse and load order line items from raw orders data.
+    """
     task_logger = context['logger']
     all_line_items = list()
     for order in orders:

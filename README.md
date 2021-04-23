@@ -4,9 +4,8 @@ Setup a daily pipeline to ingest raw Order API data into a PostgreSQL db.
 ## TODOs:
 1. Define schema with SQLAlchemy
    + Pandas inference isn't great
-2. Load order line items
-3. Define order summary view
-4. Set Prefect Scheduler
+   + Currently forces analysts to deal with type conversions, especially with datetimes
+2. Define order summary view
 
 ## Table of Contents
 - [Order Data ETL with Prefect](#order-data-etl-with-prefect)
@@ -42,10 +41,15 @@ In cloud environments, I tend to use services like Secrets Manager or HashiCorp 
 ### Usage
 Run using a LocalExecutor with `python pipeline.py`
 
+The pipeline is scheduled to run daily if it were to be deployed to a compute environment.
+
 ## Design
 Decided to use Prefect for a lightweight, Pythonic ETL tool that is both easy to run+test locally as well as deploy to a production compute environment.
 + Only using the Python package for this demo, otherwise I would use Docker to run a Prefect Server to provide pgsql metadata storage, GraphQL API, web server, etc.
 
+Started off with the intention of using the Prefect PostgreSQL ExecuteMany Task but found the lower-level odbc client and SQL string manipulation would make the pipeline more complicated. Opted to use Pandas instead but in doing so gave up control over the table schemas - I've left this out due to time, otherwise it would be well-defined with SQLAlchemy data type boilerplate.
+
+Regarding database normalization, it could be better. There is an argument to be made that OLAP workloads are better suited to columnar data stores which work best with denormalized tables because joins are expensive as opposed to relational databases like PostgreSQL designed for OLTP.
 
 ## Improvements
 + Load tasks should ideally be concurrent
