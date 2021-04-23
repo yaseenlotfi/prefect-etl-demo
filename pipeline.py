@@ -3,6 +3,7 @@
 import os
 import requests
 import json
+from datetime import timedelta
 import pandas as pd
 
 from typing import List
@@ -12,6 +13,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from prefect import Flow, task, context
 from prefect.executors import LocalExecutor
+from prefect.schedules import IntervalSchedule
 
 SOURCE_URL = os.getenv('_AWS_S3_URL_SOURCE')
 HOSTNAME = os.getenv('_PGSQL_HOSTNAME', '127.0.0.1')
@@ -141,7 +143,8 @@ def build_pipeline() -> Flow:
     """
     engine = create_engine(CONNECTION_URI)
 
-    with Flow('OrderPipeline') as flow:
+    schedule = IntervalSchedule(interval=timedelta(days=1))  # run daily
+    with Flow('OrderPipeline', schedule=schedule) as flow:
         raw_data = download_source(SOURCE_URL)
         load_users(engine, raw_data)
         load_orders(engine, raw_data)
